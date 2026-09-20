@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.eggs/
+
+# Virtual environment
+.venv/
+venv/
+
+# Downloaded dataset (re-downloads automatically, don't commit it)
+data/
+
+# Generated outputs
+non_iid_split.png
+final_model.pt
+
+# OS
+.DS_Store
+Thumbs.db
