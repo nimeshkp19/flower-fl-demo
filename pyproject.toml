@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "fl_demo"
+name = "fl-demo"
 version = "1.0.0"
 description = "Federated Learning demo with Flower - MNIST, non-IID clients"
 license = "Apache-2.0"
