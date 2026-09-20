@@ -2,7 +2,7 @@
 chart: how many of each digit (0-9) each simulated client actually has.
 
 Usage:
-    python visualize_split.py            # 5 clients (default, matches the demo)
+    python visualize_split.py            # 10 clients (default, matches the demo)
     python visualize_split.py --clients 3
 """
 
@@ -14,7 +14,7 @@ import numpy as np
 from fl_demo.task import get_partition_label_counts
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--clients", type=int, default=5)
+parser.add_argument("--clients", type=int, default=10)
 args = parser.parse_args()
 
 NUM_CLIENTS = args.clients

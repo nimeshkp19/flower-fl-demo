@@ -46,9 +46,10 @@ def _get_federated_dataset(num_partitions: int) -> FederatedDataset:
     global fds
     if fds is None:
         partitioner = PathologicalPartitioner(
-            num_partitions=num_partitions,
-            partition_by="label",
-            num_classes_per_partition=CLASSES_PER_PARTITION,
+        num_partitions=num_partitions,
+        partition_by="label",
+        num_classes_per_partition=CLASSES_PER_PARTITION,
+        class_assignment_mode="deterministic",
         )
         fds = FederatedDataset(
             dataset="ylecun/mnist",
