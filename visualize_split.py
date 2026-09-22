@@ -1,6 +1,6 @@
 """
 Usage:
-    python visualize_split.py            # 5 clients (default)
+    python visualize_split.py            # 10 clients (default, matches the demo)
     python visualize_split.py --clients 3
 """
 
