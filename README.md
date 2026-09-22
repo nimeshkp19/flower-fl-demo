@@ -1,116 +1,338 @@
 # Federated Learning Demo with Flower
 
-A small, runnable demo of **Federated Learning**: multiple clients
-train a shared model collaboratively, without ever sending their
-raw data anywhere.
+A small, reproducible demonstration of **Federated Learning (FL)** using **Flower** and **PyTorch**.
 
-Built with [Flower](https://flower.ai/) (`flwr`) and PyTorch, using
-MNIST split in a deliberately **non-IID** way across simulated
-clients, so you can watch a single global model learn to recognize
-all 10 digits even though no individual client ever sees more than
-a couple of them.
+The experiment simulates **10 clients** training a shared CNN on MNIST. The data is deliberately split in a **non-IID** way so that each client sees only a small subset of the digit classes. Clients train locally, return model parameters and metrics, and the server combines the client updates with **Federated Averaging (FedAvg)**.
+
+> **Important:** This is a simulation. The 10 clients are virtual clients running on one machine; they are not 10 separate physical devices.
 
 ## Why this is interesting
 
-- Each of the 5 simulated clients only holds **2 of the 10 digit
-  classes** (see `visualize_split.py`) — on its own, no client
-  could ever train a full digit classifier.
-- Clients train locally and send back only their **model weights**
-  — never their images.
-- The server combines those weights with **Federated Averaging
-  (FedAvg)**, weighted by how much data each client had.
-- After a few rounds, the *shared* model classifies all 10 digits
-  well, despite no client individually knowing more than 2.
+- **Non-IID data:** the clients do not all see the same distribution of MNIST data. Each client is restricted to a small number of digit classes.
+- **Local training:** each simulated client trains the current global CNN using only its own local partition.
+- **Model aggregation:** clients return trained model parameters and metrics; the server combines the model updates with **FedAvg**, weighted by the amount of local training data.
+- **Iterative learning:** the updated global model is sent to clients again for the next round.
+- **Data locality:** in this simulation, the raw MNIST examples remain in the client-side partitions used for training; the federated workflow exchanges model information rather than uploading the raw training set to the server.
+
+Federated Learning can reduce the need to centralize raw training data, but it is **not by itself a complete privacy guarantee**. Real deployments may require additional mechanisms such as secure aggregation, differential privacy, authentication, and encryption.
+
+## Experiment configuration
+
+| Setting | Value |
+|---|---:|
+| Dataset | MNIST |
+| Model | Small CNN (PyTorch) |
+| Simulated clients | 10 |
+| Data distribution | Non-IID |
+| Classes per client | 2 |
+| Federated algorithm | FedAvg |
+| Communication rounds | 5 |
+| Local epochs | 1 |
+| Batch size | 32 |
+| Learning rate | 0.01 |
+| Evaluation | Every round |
+
+## Technology stack
+
+This project uses several tools, each with a different role:
+
+| Tool | Role in this project |
+|---|---|
+| **Flower (`flwr`)** | Federated Learning framework; coordinates the ServerApp/ClientApps and FedAvg workflow |
+| **Ray** | Execution backend used by Flower's Simulation Runtime to run simulated clients |
+| **PyTorch** | Defines the CNN and performs local training/evaluation |
+| **Torchvision** | Vision/data utilities used with the PyTorch pipeline |
+| **Flower Datasets (`flwr-datasets`)** | Creates and loads the federated MNIST partitions |
+| **Matplotlib** | Visualizes the non-IID data distribution |
+
+Flower's Simulation Runtime is built on Ray. Flower currently recommends **WSL2 for Windows users running simulations**, because Ray's native Windows support remains experimental. [Flower simulation documentation](https://flower.ai/docs/framework/how-to-run-simulations.html)
+
+## Federated Learning frameworks
+
+Flower is one framework in a broader Federated Learning ecosystem. Other well-known projects include:
+
+- **TensorFlow Federated (TFF):** an open-source framework designed for federated learning and other computations on decentralized data, with APIs for both common FL workflows and custom federated algorithms. [TensorFlow Federated](https://www.tensorflow.org/federated)
+- **NVIDIA FLARE:** an open-source, extensible FL SDK with local simulation, proof-of-concept, and production-oriented deployment workflows. [NVIDIA FLARE](https://nvflare.readthedocs.io/en/main/)
+- **FedML:** a federated learning and distributed AI platform covering use cases such as smartphone/IoT, cross-silo, and browser-based FL. [FedML](https://open.fedml.ai/)
+
+This project uses **Flower** because it provides a relatively compact way to demonstrate the client/server FL workflow while remaining compatible with a normal PyTorch training pipeline.
 
 ## Requirements
 
-- Python **3.11–3.13** (Flower's simulation backend, Ray, may not
-  yet fully support brand-new Python releases like 3.14 — stick to
-  3.11–3.13 for a smooth install)
-- ~500MB free disk space (PyTorch + MNIST)
+### Recommended environment for Windows users
+
+- **Windows + WSL2 + Ubuntu**
+- Python **3.12** is the environment used for this project
+- Git
+- Approximately **500 MB+** of free disk space, depending on the installed ML dependencies and downloaded data
+
+Flower supports simulations directly on Windows, but its documentation notes that Ray support on Windows is experimental and recommends WSL2 for Windows simulation workloads. [Flower simulation documentation](https://flower.ai/docs/framework/how-to-run-simulations.html)
+
+### Linux/macOS
+
+A native Linux or macOS environment can be used for Flower simulations without the WSL2 layer.
 
 ## Setup
 
+### 1. Clone the repository
+
 ```bash
-python -m venv .venv
-source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install -e .
+git clone https://github.com/nimeshkp19/flower-fl-demo.git
+cd flower-fl-demo
 ```
+
+### 2. Create and activate a virtual environment
+
+Recommended in WSL2/Ubuntu:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+### 3. Install the project
+
+```bash
+python -m pip install -e .
+```
+
+The project's dependencies are declared in `pyproject.toml`.
 
 ## Run the demo
 
-**1. See the non-IID split** — generates a chart showing exactly
-which digits each client owns:
+### 1. Visualize the non-IID split
+
+Generate a chart showing which digit classes are assigned to the simulated clients:
 
 ```bash
 python visualize_split.py
 ```
 
-**2. Run federated training** — 5 simulated clients, 5 rounds of
-FedAvg, logged live to your terminal:
+This is useful before training because it makes the non-IID assumption visible instead of treating the client partitions as a hidden implementation detail.
+
+### 2. Run federated training
+
+Configure the local simulation for 10 simulated clients:
 
 ```bash
-flwr run . --federation-config="num-supernodes=5" --stream
+flwr federation simulation-config --num-supernodes=10
 ```
 
-Watch `eval_acc` climb round over round in the log output. That's
-the global model improving, aggregated from clients that individually
-only ever saw a fraction of the problem.
+Then start the Flower simulation and stream its logs:
 
-**Optional — look at the raw data first:**
+```bash
+flwr run . --stream
+```
+
+You should see the federated process progress through five rounds, including messages such as:
+
+```text
+Federation `@none/default` (10 simulated SuperNodes)
+
+[ROUND 1/5]
+configure_train: Sampled 10 nodes (out of 10)
+
+aggregate_train: Received 10 results and 0 failures
+
+[ROUND 2/5]
+...
+
+[ROUND 5/5]
+...
+
+Strategy execution finished in ...
+```
+
+The exact loss and accuracy values can vary between runs because local training and execution are not guaranteed to be numerically identical every time.
+
+### 3. Optional: inspect the raw MNIST representation
 
 ```bash
 python 00_look_at_data.py
 ```
-A quick look at what an MNIST image actually is under the hood
-(a 28x28 grid of numbers) before any training happens.
 
-## Project structure
+This shows what an MNIST image looks like to a computer: a `1 × 28 × 28` tensor after conversion to a PyTorch tensor.
 
+## Understanding one federated round
+
+The basic workflow is:
+
+```text
+                 Global Model
+                      |
+          +-----------+-----------+
+          |           |           |
+          v           v           v
+       Client 1    Client 2    ... Client 10
+       local data  local data       local data
+          |           |                |
+       train        train            train
+          |           |                |
+          +-----------+----------------+
+                      |
+                      v
+                 Model updates
+                      |
+                      v
+                    FedAvg
+                      |
+                      v
+                New global model
+                      |
+                   next round
 ```
+
+A client starts from the current global model, trains locally on its own partition, and returns the updated model parameters and metrics. The server aggregates the client models using FedAvg and produces the next global model.
+
+The same pattern repeats for each communication round.
+
+## How the code is organized
+
+```text
 .
-├── pyproject.toml          # dependencies + Flower app config
-├── visualize_split.py      # shows the non-IID split across clients
-├── 00_look_at_data.py      # raw look at a single MNIST image
+├── pyproject.toml          # Dependencies + Flower app configuration
+├── visualize_split.py      # Visualizes the non-IID client split
+├── 00_look_at_data.py      # Inspects a single MNIST image/tensor
 └── fl_demo/
-    ├── task.py             # model, data partitioning, train/test loops
-    ├── client_app.py       # runs on each simulated client
-    └── server_app.py       # coordinates FedAvg on the server
+    ├── __init__.py
+    ├── task.py              # CNN, data partitioning, training/evaluation
+    ├── client_app.py        # Defines client-side train/evaluate tasks
+    └── server_app.py        # Initializes the global model and FedAvg
 ```
 
-## How it works, briefly
+### `task.py`
 
-1. **`task.py`** partitions MNIST across clients using Flower
-   Datasets' `PathologicalPartitioner`, so each client only gets 2
-   digit classes — a deliberately hard, non-IID split.
-2. **`client_app.py`** defines what a client does when asked to
-   train or evaluate: load the current global model, train/test on
-   its own local partition only, send back weights + metrics.
-3. **`server_app.py`** initializes a model and runs Flower's
-   `FedAvg` strategy for a configurable number of rounds,
-   aggregating client updates each round.
-4. `flwr run .` launches Flower's Simulation Engine, which
-   simulates all of this locally, no real network required.
+Contains the ML-specific logic:
+
+- CNN architecture
+- MNIST federated partitioning
+- PyTorch data loading
+- local training loop
+- local evaluation loop
+
+### `client_app.py`
+
+Defines what a client does during a federated round:
+
+1. Receive the current global model.
+2. Load its own local partition.
+3. Train locally.
+4. Return the updated model parameters and metrics.
+5. Evaluate the model when requested by the server.
+
+### `server_app.py`
+
+Defines the server-side workflow:
+
+1. Initialize the global CNN.
+2. Start Flower's `FedAvg` strategy.
+3. Send the global model to participating clients.
+4. Aggregate the returned client models.
+5. Repeat for the configured number of rounds.
+6. Save the final global model to `final_model.pt`.
 
 ## Configuration
 
-Tweak `[tool.flwr.app.config]` in `pyproject.toml`:
+The main run configuration is in `pyproject.toml` under `[tool.flwr.app.config]`:
 
 | Key | Meaning |
 |---|---|
-| `num-server-rounds` | how many rounds of federated training to run |
-| `fraction-evaluate` | fraction of clients used for evaluation each round |
-| `learning-rate` | local optimizer learning rate |
-| `batch-size` | local training batch size |
-| `local-epochs` | how many local epochs each client trains per round |
+| `num-server-rounds` | Number of federated training rounds |
+| `fraction-evaluate` | Fraction of available clients used for evaluation |
+| `learning-rate` | Learning rate used by each client's optimizer |
+| `batch-size` | Local training batch size |
+| `local-epochs` | Number of local epochs per federated round |
+
+The number of simulated clients is controlled separately through the Flower federation configuration:
+
+```bash
+flwr federation simulation-config --num-supernodes=10
+```
+
+## Windows, WSL2, and practical issues
+
+This project was originally tested directly on Windows and then moved to **WSL2/Ubuntu** for the Flower simulation workflow.
+
+The main practical issue was the simulation backend: Flower's Simulation Runtime uses Ray, and Flower currently describes Ray's native Windows support as experimental while recommending WSL2 for Windows users running simulations. [Flower simulation documentation](https://flower.ai/docs/framework/how-to-run-simulations.html)
+
+WSL2 provides a Linux environment inside Windows, allowing the project to keep using Windows while running the Flower/Ray simulation in Ubuntu.
+
+### Runtime dependencies
+
+Flower can create an isolated runtime environment for an app and install the dependencies declared in `pyproject.toml` automatically. This is convenient for reproducibility, but the first run can take significantly longer while dependencies are downloaded and installed. The managed local SuperLink can be configured to disable runtime dependency installation when dependencies have already been prepared locally. [Flower runtime dependency documentation](https://flower.ai/docs/framework/1.37/en/how-to-install-app-dependencies-at-runtime.html)
+
+For a presentation, it is preferable to **run the experiment beforehand and use screenshots of the successful run**, rather than depending on package installation, dataset downloads, or local runtime services during the presentation itself.
+
+## Useful Flower commands
+
+Check the installed Flower version:
+
+```bash
+flwr --version
+```
+
+Run the simulation:
+
+```bash
+flwr run . --stream
+```
+
+List a completed or running simulation by ID:
+
+```bash
+flwr list --run-id <RUN_ID>
+```
+
+Show the logs for a run:
+
+```bash
+flwr log <RUN_ID> --show
+```
+
+## Presentation demo
+
+This repository was created as the practical component of a short presentation on Federated Learning.
+
+The recommended presentation demo is **screenshot-based** rather than a live execution. A successful `flwr run . --stream` output can be captured and explained step-by-step:
+
+```text
+10 simulated clients
+        ↓
+Round 1
+        ↓
+Local training
+        ↓
+10 client results returned
+        ↓
+FedAvg aggregation
+        ↓
+Evaluation
+        ↓
+Round 2 ... Round 5
+```
+
+The screenshots demonstrate the real experiment while avoiding presentation-time risks such as dependency installation, model downloads, Ray startup, or operating-system-specific runtime issues.
+
+The repository can then be shared so others can reproduce the experiment themselves.
+
+## Privacy note
+
+Federated Learning changes **where training data is processed**, but it does not automatically make a system private or secure.
+
+This demo illustrates the basic data-locality idea: the client partitions are used locally for training, while the federated workflow exchanges model information and metrics. Real systems may additionally use techniques such as secure aggregation, differential privacy, encryption, authentication, access control, and robust aggregation depending on the threat model and application.
 
 ## Background
 
-This demo was built as the practical component of a short
-presentation on Federated Learning, covering the client-server
-architecture, FedAvg, non-IID data, and the privacy properties (and
-limits) of the approach.
+The experiment is intended to demonstrate:
+
+- centralized vs. federated training
+- client/server architecture
+- local model training
+- non-IID data
+- FedAvg aggregation
+- simulation with Flower and Ray
+- practical environment considerations such as WSL2 on Windows
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+This project is licensed under the **MIT License**. See [`LICENSE`](LICENSE) for the full license text.
