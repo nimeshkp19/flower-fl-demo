@@ -200,36 +200,7 @@ The same pattern repeats for each communication round.
     └── server_app.py        # Initializes the global model and FedAvg
 ```
 
-### `task.py`
 
-Contains the ML-specific logic:
-
-- CNN architecture
-- MNIST federated partitioning
-- PyTorch data loading
-- local training loop
-- local evaluation loop
-
-### `client_app.py`
-
-Defines what a client does during a federated round:
-
-1. Receive the current global model.
-2. Load its own local partition.
-3. Train locally.
-4. Return the updated model parameters and metrics.
-5. Evaluate the model when requested by the server.
-
-### `server_app.py`
-
-Defines the server-side workflow:
-
-1. Initialize the global CNN.
-2. Start Flower's `FedAvg` strategy.
-3. Send the global model to participating clients.
-4. Aggregate the returned client models.
-5. Repeat for the configured number of rounds.
-6. Save the final global model to `final_model.pt`.
 
 ## Configuration
 
@@ -332,6 +303,33 @@ The experiment is intended to demonstrate:
 - FedAvg aggregation
 - simulation with Flower and Ray
 - practical environment considerations such as WSL2 on Windows
+
+## References and further reading
+
+### Foundational paper
+
+**McMahan et al. (2017)** — *Communication-Efficient Learning of Deep Networks from Decentralized Data*. This is the foundational paper associated with the Federated Averaging (FedAvg) approach used in this project.
+
+- [Paper — Proceedings of Machine Learning Research (PMLR)](https://proceedings.mlr.press/v54/mcmahan17a)
+- [Paper — arXiv](https://arxiv.org/abs/1602.05629)
+
+### Federated Learning overview
+
+**Yurdem et al. (2024)** — *Federated learning: Overview, strategies, applications, tools and future directions*. **Heliyon, 10(19), e38137.** This review provides a broad overview of federated learning, including FL strategies, applications, tools/frameworks, challenges, and future research directions.
+
+- [Paper — Cell / Heliyon](https://www.cell.com/heliyon/fulltext/S2405-8440(24)14168-0)
+- [Paper — ScienceDirect](https://www.sciencedirect.com/science/article/pii/S2405844024141680)
+- [Paper — PubMed](https://pubmed.ncbi.nlm.nih.gov/39391509/)
+- DOI: [10.1016/j.heliyon.2024.e38137](https://doi.org/10.1016/j.heliyon.2024.e38137)
+
+### Flower documentation
+
+- [Flower Framework Documentation](https://flower.ai/docs/framework/) — main documentation
+- [Flower Quickstart: PyTorch](https://flower.ai/docs/framework/tutorial-quickstart-pytorch.html) — build and run a Flower + PyTorch application
+- [Run Flower Simulations](https://flower.ai/docs/framework/how-to-run-simulations.html) — simulation workflow and configuration
+- [Flower Architecture](https://flower.ai/docs/framework/explanation-flower-architecture.html) — ServerApp, ClientApp, SuperLink, and federation architecture
+
+These resources were used to understand the federated learning workflow, FedAvg, Flower application structure, and the simulation environment used by this demo.
 
 ## License
 
